@@ -7,7 +7,7 @@ export default function Contact() {
 
   return (
     <div style={{display:"flex", justifyContent:"center", alignItems:"center", height:"100vh"}}>
-      <h1>Contact Us Page</h1>
+      <h1>Contact Us Page - Updated</h1>
     </div>
   );
 }
