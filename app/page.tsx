@@ -1,65 +1,117 @@
 import Image from "next/image";
 
-export default function Home() {
+// 🔁 Fetch homepage
+async function getHomePage() {
+  const res = await fetch(
+    "https://dodgerblue-snail-458253.hostingersite.com/wp-json/wp/v2/pages?slug=headless-homepage",
+    {
+      next: { revalidate: 60 },
+    }
+  );
+
+  const data = await res.json();
+  return data[0];
+}
+
+// 🔁 Convert Media ID → URL
+async function getMediaUrl(id: number) {
+  const res = await fetch(
+    `https://dodgerblue-snail-458253.hostingersite.com/wp-json/wp/v2/media/${id}`
+  );
+  const data = await res.json();
+  return data?.source_url || null;
+}
+
+export default async function Home() {
+  const page = await getHomePage();
+  const sections = page?.acf?.page_builder || [];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main>
+      {await Promise.all(
+        sections.map(async (section: any, index: number) => {
+          switch (section.acf_fc_layout) {
+            case "hero":
+              return (
+                <section
+                  className="bg-cover bg-center text-white py-20 px-6 text-center"
+                  style={{
+                    backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${section.hero_bg_image_url})`,
+                  }}
+                >
+                  <div className="max-w-4xl mx-auto text-white">
+                    <h1 className="text-4xl md:text-6xl font-bold mb-6">
+                      {section.title}
+                    </h1>
+
+                    <p className="text-lg md:text-xl mb-8 text-white/90">
+                      {section.subtitle}
+                    </p>
+
+                    <a
+                      href={section.button_link}
+                      className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+                    >
+                      {section.button_text}
+                    </a>
+                  </div>
+                </section>
+              );
+
+            case "text_section":
+              return (
+                <section key={index}>
+                  <h2 className="text-4xl text-blue-600 font-bold">{section.title}</h2>
+                  <p>{section.content}</p>
+                </section>
+              );
+
+            case "events":
+              return (
+                <section key={index}>
+                  <h2>{section.title}</h2>
+
+                  <div style={{ display: "grid", gap: "20px" }}>
+                    {await Promise.all(
+                      section.events_list?.map(
+                        async (event: any, i: number) => {
+                          // 🔥 Convert ID → URL
+                          const imageUrl = event.image
+                            ? await getMediaUrl(Number(event.image))
+                            : null;
+
+                          return (
+                            <div key={i}>
+                              <h3>{event.title}</h3>
+                              <p>{event.description}</p>
+
+                              {/* ✅ IMAGE FIX */}
+                              {imageUrl && (
+                                <Image
+                                  src={imageUrl}
+                                  alt={event.title}
+                                  width={300}
+                                  height={200}
+                                />
+                              )}
+
+                              <a href={event.button_link}>
+                                {event.button_text}
+                              </a>
+                            </div>
+                          );
+                        }
+                      ) || []
+                    )}
+                  </div>
+                </section>
+              );
+
+            default:
+              return null;
+          }
+        })
+      )}
+    </main>
   );
 }

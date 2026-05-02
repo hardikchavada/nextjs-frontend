@@ -1,7 +1,9 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
+  images: {
+    domains: [
+      "dodgerblue-snail-458253.hostingersite.com",
+    ],
+  },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
